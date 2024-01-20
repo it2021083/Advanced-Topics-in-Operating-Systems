@@ -6,30 +6,14 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <string.h>
+#include <sys/select.h>
+#include <sys/time.h>
 #include "test_2_parent.h"
 #include "test_2_child.h"
 
-//Gracefull shutdown
-#include <signal.h>
-#include <unistd.h>
 
 pid_t fork_pid = -1; // Global
 
-void kill_child(int sig){
-    kill(fork_pid, SIGTERM);
-}
-
-void on_sig_term(int sig){
-    printf("I am child, my father just terminates me! \n");
-}
-
-void kill_child_2(int sig){
-    kill(fork_pid, SIGINT);
-}
-
-void on_sig_term_2(int sig){
-    printf("I am child, my father just terminates me! \n");
-}
 
 
 // Main program
@@ -58,6 +42,7 @@ int main(int argc, char *argv[]) {
     //pipes
     edit_list(children->head);
 
+
     // Fork a child process
     for ( int j = 0; j < N; j++)
     {
@@ -73,21 +58,25 @@ int main(int argc, char *argv[]) {
         //Processes
         if (fork_pid > 0) {  // Parent process
             parent_process(&j, child, fd);
-            signal(SIGINT, (void (*)(int))kill_child_2);
-            signal(SIGTERM, (void (*)(int))kill_child);
-            //sleep(30);
-            //alarm(30);
-            //wait(NULL);
-            //printf("Child has been gracefully shut down\n");
         } else {  // Child process
             //sleep(2);
-            child_process(&j, child, fd );
-            signal(SIGINT, (void (*)(int))kill_child_2);
-            signal(SIGTERM, (void (*)(int))kill_child);
-            //printf("This is a test\n");
-            //sleep(60);
+            child_process(child, fd );
             
         }
+    }
+
+    sleep(2);
+    parent_child_control(N,children);
+
+    //Close pipes
+    for (int i = 0; i < N; i++)
+    {
+        //Close read pointer of the one pipe and write pointer from the other pipe
+        Child *child  = search_child(children, i);
+        close(child->pipe_fd_read[1]);
+        close(child->pipe_fd_write[0]);
+        close(child->pipe_fd_read[0]);
+        close(child->pipe_fd_write[1]);
     }
     
     //Close the file descriptor
