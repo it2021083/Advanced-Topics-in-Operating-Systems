@@ -36,12 +36,12 @@ int main(int argc, char *argv[]) {
     //String to integer(Number of child processes)
     int N = atoi(argv[2]);
 
-    //Create linked list
+    //Create a linked list for children.
     List *children = create_child_list(N);
-    //Create linked list
+    //Create a linked list for parent's nodes
     List_P *parents = create_parent_list(N);
 
-    //pipes
+    //Create the pipes of children
     edit_list(children->head);
 
 
@@ -51,9 +51,10 @@ int main(int argc, char *argv[]) {
         //Attach child process to child node
         Child *child  = search_child(children, j);
 
-        //Attach child process to child node
+        //Choose the right parent node that corresponds to each child
         Parent *parent  = search_parent(parents, j);
 
+        // Create the child processes
         fork_pid = fork();
         if (fork_pid == -1) {
             perror("fork");
@@ -62,22 +63,25 @@ int main(int argc, char *argv[]) {
         }
         
         //Processes
+
         if (fork_pid > 0) {  // Parent process
-            parent_process(&j, child, fd, parent);
+
+            parent_process(&j, child, fd, parent); // Process that writes parent's pid to the file and asks for children's pids 
+        
         } else {  // Child process
-            //sleep(2);
-            child_process(child, fd );
+            
+            child_process(child, fd ); // Process of each child: Write their pids to the file and send confirmation message to the parent
             
         }
     }
 
     sleep(2);
-    parent_child_control(N,children, parents);
+    parent_child_control(N,children, parents); // Process that controls the exchange of messages between parent and children
 
-    //Close pipes
+    //Close all the pipes
     for (int i = 0; i < N; i++)
     {
-        //Close read pointer of the one pipe and write pointer from the other pipe
+        //Close read and write pipes(both ends) from every child
         Child *child  = search_child(children, i);
         close(child->pipe_fd_read[1]);
         close(child->pipe_fd_write[0]);
@@ -89,6 +93,7 @@ int main(int argc, char *argv[]) {
     close(fd);
     //Free allocated memory
     free_list(children);
+    free_parent_list(parents);
 
     return 0;
 
