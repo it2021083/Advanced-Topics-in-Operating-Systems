@@ -37,7 +37,9 @@ int main(int argc, char *argv[]) {
     int N = atoi(argv[2]);
 
     //Create linked list
-    List *children = create_list(N);
+    List *children = create_child_list(N);
+    //Create linked list
+    List_P *parents = create_parent_list(N);
 
     //pipes
     edit_list(children->head);
@@ -48,16 +50,20 @@ int main(int argc, char *argv[]) {
     {
         //Attach child process to child node
         Child *child  = search_child(children, j);
-        
+
+        //Attach child process to child node
+        Parent *parent  = search_parent(parents, j);
+
         fork_pid = fork();
         if (fork_pid == -1) {
             perror("fork");
             exit(EXIT_FAILURE);
+
         }
         
         //Processes
         if (fork_pid > 0) {  // Parent process
-            parent_process(&j, child, fd);
+            parent_process(&j, child, fd, parent);
         } else {  // Child process
             //sleep(2);
             child_process(child, fd );
@@ -66,7 +72,7 @@ int main(int argc, char *argv[]) {
     }
 
     sleep(2);
-    parent_child_control(N,children);
+    parent_child_control(N,children, parents);
 
     //Close pipes
     for (int i = 0; i < N; i++)
